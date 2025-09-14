@@ -28,7 +28,7 @@ export default function SlappyChat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { speak } = useTextToSpeech();
+  const { speak, isPlaying: isTTSPlaying } = useTextToSpeech();
 
   // Fetch messages
   const { data: messages = [], isLoading } = useQuery<ChatMessage[]>({
@@ -89,6 +89,17 @@ export default function SlappyChat() {
     onFinalText: handleVoiceCommand,
     debug: false,
   });
+
+  // Automatically stop/start voice recognition when TTS is playing/stopped
+  useEffect(() => {
+    if (isTTSPlaying && isListening) {
+      console.log('🔇 TTS started - pausing voice recognition to prevent loop');
+      stopListening();
+    } else if (!isTTSPlaying && isListeningEnabled && !isListening) {
+      console.log('🎤 TTS finished - resuming voice recognition');
+      startListening();
+    }
+  }, [isTTSPlaying, isListening, isListeningEnabled, startListening, stopListening]);
 
   // Voice input toggle handler
   const handleToggleListening = useCallback(() => {
