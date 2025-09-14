@@ -1,0 +1,55 @@
+# Dependências
+node_modules
+npm-debug.log*
+
+# Build output
+dist
+.vite
+
+# Logs
+*.log
+logs
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Git
+.git
+.gitignore
+
+# Replit específico
+.replit
+replit.nix
+
+# Desenvolvimento
+.cache
+.temp
+.tmp
+
+# Testes
+coverage
+.nyc_output
+
+# Hot module replacement
+.hot
+.parcel-cache
+
+# Drizzle
+drizzle
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml

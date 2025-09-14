@@ -1,0 +1,22 @@
+# Docker Compose para desenvolvimento local
+version: '3.8'
+
+services:
+  slapy:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - DATABASE_URL=${DATABASE_URL}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { host: 'localhost', port: 5000, timeout: 2000 }; const request = http.request(options, (res) => { console.log('Health check passed'); process.exit(0); }); request.on('error', (err) => { console.log('Health check failed'); process.exit(1); }); request.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
