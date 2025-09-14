@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, Settings, Menu, Bot } from "lucide-react";
+import { Send, Settings, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ChatMessageComponent } from "@/components/chat-message";
 import { VoiceInput } from "@/components/voice-input";
@@ -24,7 +24,6 @@ export default function SlappyChat() {
   const [isTTSEnabled, setIsTTSEnabled] = useState(true);
   const [isVoiceOnlyMode, setIsVoiceOnlyMode] = useState(false);
   const [wakeWord, setWakeWord] = useState("Ok, Slapy");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
@@ -155,10 +154,17 @@ export default function SlappyChat() {
     }
   }, [messages, isTyping]);
 
+  // Stop listening immediately when continuous listening is disabled
+  useEffect(() => {
+    if (!isListeningEnabled && isListening) {
+      stopListening();
+    }
+  }, [isListeningEnabled, isListening, stopListening]);
+
   return (
     <div className="flex h-screen bg-gradient-to-br from-background via-background to-secondary/10">
       {/* Sidebar */}
-      <div className={`${isSidebarOpen ? 'block' : 'hidden'} lg:flex lg:w-80 lg:flex-col glass-effect border-r border-border`}>
+      <div className="hidden">
         <div className="flex-1 overflow-y-auto p-6">
           {/* Logo/Header */}
           <div className="flex items-center space-x-3 mb-8">
@@ -242,15 +248,6 @@ export default function SlappyChat() {
         <header className="glass-effect border-b border-border px-4 py-3 lg:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden"
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                data-testid="sidebar-toggle"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
                   <Bot className="text-primary-foreground text-sm" />
@@ -273,9 +270,12 @@ export default function SlappyChat() {
                     <Settings className="h-5 w-5" />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md" aria-describedby="settings-desc">
                   <DialogHeader>
                     <DialogTitle>Configurações</DialogTitle>
+                    <DialogDescription id="settings-desc">
+                      Ajuste as configurações de reconhecimento de voz, síntese de fala e modo de visualização.
+                    </DialogDescription>
                   </DialogHeader>
                   
                   <div className="space-y-4">
