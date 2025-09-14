@@ -1,0 +1,20 @@
+Prompt Aprimorado do Projeto: Interface de IA Conversacional "Slapy"
+Visão Geral:
+Criar uma interface web imersiva e responsiva para um assistente de IA chamado "Slapy". A interface deve operar em um modo de "escuta ativa" contínua, permitindo que o usuário interaja com o assistente por voz a qualquer momento, além de oferecer uma opção para entrada de texto. O design será minimalista, futurista e focado em uma experiência de usuário fluida, com um layout de chat que distingue claramente as entradas do usuário das respostas do Slapy.
+Recursos Principais Aprimorados:
+Modo de Escuta Ativa Contínua:
+O microfone permanecerá ativo, transcrevendo a fala do usuário em tempo real.
+Uma "palavra-chave de ativação" (como "Ok, Slapy" ou simplesmente "Slapy") será usada para diferenciar comandos direcionados ao assistente de conversas ambientes.
+Um indicador visual sutil (como um anel pulsante) mostrará que o sistema está ouvindo.
+Interação Dupla (Voz e Texto):
+Voz: A interface captura e transcreve a fala continuamente. Ao detectar a palavra-chave, o texto subsequente é enviado ao webhook.
+Texto: Um campo de entrada de texto elegante estará disponível para digitação, enviando a mensagem ao webhook ao pressionar "Enter" ou um botão de envio.
+Comunicação com Webhook:
+Envio: O texto (transcrito da voz ou digitado) é enviado para o seu webhook: https://n8n.yuccie.pro/webhook/n8n.
+Recebimento: A resposta do webhook, que deve vir no campo output, será exibida na interface como uma mensagem do Slapy.
+Síntese de Voz (Text-to-Speech ):
+A resposta de texto recebida do webhook será convertida em áudio usando a API da ElevenLabs e reproduzida automaticamente, dando "vida" à voz do Slapy.
+UI Futurista e Minimalista:
+Layout de Chat: Exibição clara das mensagens do usuário e do Slapy.
+Estética Dark Mode: Fundo escuro com tipografia e elementos de destaque em cores vibrantes (como azul elétrico ou ciano) para uma aparência "high-tech".
+Animações Sutis: Efeitos de "fade-in" para novas mensagens e animações no indicador de escuta para tornar a experiência mais polida.
