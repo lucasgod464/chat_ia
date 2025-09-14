@@ -82,13 +82,12 @@ export default function SlappyChat() {
     }
   }, [sendMessageMutation]);
 
-  // Speech recognition with wake word detection
-  const { isListening, isSupported, lastError, startListening, stopListening } = useSpeechRecognition({
+  // Speech recognition without wake word - auto-send when speech ends
+  const { isListening, isSupported, lastError, startListening, stopListening, transcript } = useSpeechRecognition({
     continuous: isListeningEnabled,
     language: 'pt-BR',
-    onWakeWord: handleVoiceCommand,
-    wakeWords: [wakeWord.toLowerCase()],
-    debug: true, // Enable debug logging
+    onFinalText: handleVoiceCommand,
+    debug: false,
   });
 
   // Voice input toggle handler
@@ -210,13 +209,16 @@ export default function SlappyChat() {
 
             <Card>
               <CardContent className="p-4">
-                <label className="block text-sm mb-2">Palavra-chave</label>
-                <Input
-                  value={wakeWord}
-                  onChange={(e) => setWakeWord(e.target.value)}
-                  placeholder="Ok, Slapy"
-                  data-testid="wake-word-input"
-                />
+                <div className="text-center">
+                  <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
+                    <svg className="w-4 h-4 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 715 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-center text-muted-foreground">
+                    Fale normalmente quando a escuta estiver ativa. O sistema enviará automaticamente sua mensagem quando você parar de falar.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -292,6 +294,28 @@ export default function SlappyChat() {
               />
             ))}
 
+            {/* Voice Transcription Indicator */}
+            {isListening && transcript && (
+              <div className="flex items-start space-x-3 message-animation" data-testid="voice-transcription">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center flex-shrink-0 listening-indicator">
+                  <svg className="w-4 h-4 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <div className="bg-secondary/50 border border-primary/30 rounded-2xl rounded-tl-md px-4 py-3 max-w-2xl">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                      <span className="text-xs text-primary font-medium">Escutando...</span>
+                    </div>
+                    <p className="text-sm text-foreground/90" data-testid="live-transcript">
+                      {transcript}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Typing Indicator */}
             {isTyping && (
               <div className="flex items-start space-x-3 message-animation" data-testid="typing-indicator">
@@ -338,7 +362,7 @@ export default function SlappyChat() {
                       autoResizeTextarea();
                     }}
                     onKeyDown={handleKeyDown}
-                    placeholder={`Digite sua mensagem ou diga '${wakeWord}' para usar comandos de voz...`}
+                    placeholder="Digite sua mensagem ou ative o microfone para falar diretamente..."
                     className="w-full bg-input border border-border rounded-xl px-4 py-3 pr-12 text-sm resize-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200 max-h-32 min-h-[48px]"
                     rows={1}
                     data-testid="message-input"
@@ -360,7 +384,7 @@ export default function SlappyChat() {
             {/* Quick Actions */}
             <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
               <div className="flex items-center space-x-4">
-                <span>💡 Dica: Use "{wakeWord}" para ativar comandos de voz</span>
+                <span>🎤 Dica: Ative o microfone e fale normalmente - envio automático</span>
               </div>
               <div className="flex items-center space-x-2">
                 <span>Shift + Enter para nova linha</span>

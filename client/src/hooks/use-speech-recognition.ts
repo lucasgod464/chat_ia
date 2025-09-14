@@ -10,8 +10,7 @@ interface UseSpeechRecognitionProps {
   continuous?: boolean;
   language?: string;
   onResult?: (result: SpeechRecognitionResult) => void;
-  onWakeWord?: (transcript: string) => void;
-  wakeWords?: string[];
+  onFinalText?: (transcript: string) => void;
   debug?: boolean;
 }
 
@@ -29,9 +28,8 @@ export function useSpeechRecognition({
   continuous = true,
   language = 'pt-BR',
   onResult,
-  onWakeWord,
-  wakeWords = ['slapy', 'ok slapy'],
-  debug = true, // Enable debug by default for troubleshooting
+  onFinalText,
+  debug = false,
 }: UseSpeechRecognitionProps = {}): SpeechRecognitionHook {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -39,6 +37,7 @@ export function useSpeechRecognition({
   const [lastError, setLastError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const restartTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const finalTranscriptRef = useRef<string>('');
   const isSupported = typeof window !== 'undefined' && 
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
@@ -48,84 +47,56 @@ export function useSpeechRecognition({
     }
   }, [debug]);
 
-  const checkForWakeWord = useCallback((text: string) => {
-    const lowercaseText = text.toLowerCase().trim();
-    log('🎤 Checking for wake word in text:', lowercaseText);
-    
-    // More flexible wake word detection
-    let foundWakeWord = false;
-    let command = '';
-    let matchedWakeWord = '';
-    
-    for (const wakeWord of wakeWords) {
-      const lowerWakeWord = wakeWord.toLowerCase();
-      
-      // Check if wake word is at the beginning or contains it
-      if (lowercaseText.startsWith(lowerWakeWord) || lowercaseText.includes(lowerWakeWord)) {
-        foundWakeWord = true;
-        matchedWakeWord = wakeWord;
-        log('✅ Wake word found:', lowerWakeWord);
-        
-        // Extract command after wake word with multiple strategies
-        let extractedCommand = text;
-        
-        // Strategy 1: Replace wake word with regex
-        const regex = new RegExp(`\\b${lowerWakeWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-        extractedCommand = extractedCommand.replace(regex, '').trim();
-        
-        // Strategy 2: If no command, try splitting and taking everything after
-        if (!extractedCommand || extractedCommand.length < 2) {
-          const parts = text.toLowerCase().split(lowerWakeWord);
-          if (parts.length > 1) {
-            extractedCommand = parts[parts.length - 1].trim();
-          }
-        }
-        
-        // Strategy 3: If still no command, try removing from the start
-        if (!extractedCommand || extractedCommand.length < 2) {
-          const startIndex = lowercaseText.indexOf(lowerWakeWord);
-          if (startIndex !== -1) {
-            extractedCommand = text.substring(startIndex + lowerWakeWord.length).trim();
-          }
-        }
-        
-        command = extractedCommand;
-        log('📝 Extracted command:', command);
-        break;
-      }
+  const clearRestartTimeout = useCallback(() => {
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
     }
-    
-    if (foundWakeWord && onWakeWord) {
-      log('🚀 Triggering wake word callback');
-      if (command && command.length > 0) {
-        log('📤 Sending command:', command);
-        onWakeWord(command);
-      } else {
-        // If no specific command was extracted, send the entire text minus common wake words
-        const cleanedText = text.toLowerCase()
-          .replace(/\b(ok|hey|oi|olá)\s*/gi, '')
-          .replace(/\bslapy\b/gi, '')
-          .trim();
-        
-        if (cleanedText.length > 0) {
-          log('📤 Sending cleaned text:', cleanedText);
-          onWakeWord(cleanedText);
-        } else {
-          log('⚠️ No meaningful command found in text:', text);
-        }
-      }
-    } else {
-      log('❌ No wake word found in:', lowercaseText);
-    }
-  }, [wakeWords, onWakeWord, log]);
+  }, []);
 
-  useEffect(() => {
-    if (!isSupported) {
-      log('❌ Speech recognition not supported');
-      return;
+  const stopRecognition = useCallback(() => {
+    log('🛑 Stopping speech recognition');
+    clearRestartTimeout();
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
     }
+    setIsListening(false);
+    setTranscript('');
+    finalTranscriptRef.current = '';
+  }, [clearRestartTimeout, log]);
 
-    log('🔧 Initializing speech recognition');
+  const startRecognition = useCallback(() => {
+    if (!isSupported || !recognitionRef.current) return;
+    
+    log('🎤 Starting speech recognition');
+    clearRestartTimeout();
+    setLastError(null);
+    
+    try {
+      recognitionRef.current.start();
+    } catch (error) {
+      log('❌ Error starting recognition:', error);
+      setLastError('Erro ao iniciar reconhecimento de voz');
+    }
+  }, [isSupported, clearRestartTimeout, log]);
+
+  // Auto-restart recognition for continuous listening
+  const scheduleRestart = useCallback(() => {
+    if (continuous && !restartTimeoutRef.current) {
+      log('🔄 Scheduling restart in 1000ms...');
+      restartTimeoutRef.current = setTimeout(() => {
+        if (!isListening) {
+          startRecognition();
+        }
+      }, 1000);
+    }
+  }, [continuous, isListening, startRecognition, log]);
+
+  const setupRecognition = useCallback(() => {
+    if (!isSupported) return;
+
+    log('🔧 Setting up speech recognition');
+    
     const SpeechRecognition = 
       window.SpeechRecognition || window.webkitSpeechRecognition;
     
@@ -138,10 +109,10 @@ export function useSpeechRecognition({
     recognition.maxAlternatives = 1;
 
     log('⚙️ Recognition settings:', {
-      continuous,
-      interimResults: true,
-      lang: language,
-      maxAlternatives: 1
+      continuous: recognition.continuous,
+      interimResults: recognition.interimResults,
+      lang: recognition.lang,
+      maxAlternatives: recognition.maxAlternatives,
     });
 
     recognition.onstart = () => {
@@ -151,166 +122,114 @@ export function useSpeechRecognition({
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
+      log('📝 Speech recognition result received');
+      
       let interimTranscript = '';
       let finalTranscript = '';
-      let finalConfidence = 0;
-
-      log('📝 Speech recognition result received, processing...');
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
         const transcriptPart = result[0].transcript;
-        const confidence = result[0].confidence || 0;
-        
-        log(`Result ${i}: "${transcriptPart}" (confidence: ${confidence}, final: ${result.isFinal})`);
         
         if (result.isFinal) {
           finalTranscript += transcriptPart;
-          finalConfidence = Math.max(finalConfidence, confidence);
+          finalTranscriptRef.current += transcriptPart;
+          setConfidence(result[0].confidence);
           log('✅ Final transcript part:', transcriptPart);
-          
-          // Check for wake word on each final result
-          checkForWakeWord(transcriptPart);
         } else {
           interimTranscript += transcriptPart;
-          // Also check interim results for immediate wake word detection
-          if (transcriptPart.trim().length > 4) {
-            log('🔄 Checking interim result for wake word');
-            checkForWakeWord(transcriptPart);
-          }
         }
       }
 
-      const fullTranscript = finalTranscript + interimTranscript;
+      const fullTranscript = finalTranscriptRef.current + interimTranscript;
       setTranscript(fullTranscript);
-      setConfidence(finalConfidence);
 
       if (onResult) {
-        const lastResult = event.results[event.results.length - 1];
         onResult({
           transcript: fullTranscript,
-          confidence: lastResult?.[0]?.confidence || 0,
-          isFinal: lastResult?.isFinal || false,
+          confidence: event.results[event.results.length - 1]?.[0]?.confidence || 0,
+          isFinal: event.results[event.results.length - 1]?.isFinal || false,
         });
+      }
+
+      // Send final transcript automatically when speech ends
+      if (finalTranscript.trim() && onFinalText) {
+        const trimmedText = finalTranscriptRef.current.trim();
+        if (trimmedText) {
+          log('📤 Auto-sending final text:', trimmedText);
+          onFinalText(trimmedText);
+          finalTranscriptRef.current = '';
+          setTranscript('');
+        }
       }
     };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      const errorMessage = `Speech recognition error: ${event.error} - ${event.message || ''}`;
-      log('❌ ERROR:', errorMessage);
-      console.error(errorMessage);
-      setLastError(event.error);
+    recognition.onerror = (event: any) => {
+      const errorMessage = event.error;
+      log('❌ Speech recognition error:', errorMessage);
+      
+      if (errorMessage === 'no-speech') {
+        // Ignore no-speech errors as they're common in continuous listening
+        log('🔇 No speech detected, continuing...');
+      } else {
+        setLastError(`Erro: ${errorMessage}`);
+      }
+      
       setIsListening(false);
-      
-      // Clear any pending restart
-      if (restartTimeoutRef.current) {
-        clearTimeout(restartTimeoutRef.current);
-        restartTimeoutRef.current = null;
-      }
-      
-      // Try to restart after certain errors
-      if (event.error === 'no-speech' || event.error === 'aborted') {
-        log('🔄 Recoverable error, will restart automatically');
-      }
     };
 
     recognition.onend = () => {
       log('🛑 Speech recognition ended');
       setIsListening(false);
+      
+      // Send any remaining final transcript
+      if (finalTranscriptRef.current.trim() && onFinalText) {
+        const trimmedText = finalTranscriptRef.current.trim();
+        log('📤 Sending remaining text on end:', trimmedText);
+        onFinalText(trimmedText);
+        finalTranscriptRef.current = '';
+      }
+      
       setTranscript('');
       
-      // Clear any existing restart timeout
-      if (restartTimeoutRef.current) {
-        clearTimeout(restartTimeoutRef.current);
-        restartTimeoutRef.current = null;
-      }
-      
-      // Restart if continuous listening is enabled and no critical error occurred
-      if (continuous && (!lastError || lastError === 'no-speech' || lastError === 'aborted')) {
-        log('🔄 Scheduling restart in 500ms...');
-        restartTimeoutRef.current = setTimeout(() => {
-          if (recognitionRef.current && document.visibilityState === 'visible') {
-            try {
-              log('🔄 Attempting to restart speech recognition');
-              recognitionRef.current.start();
-            } catch (error) {
-              const err = error as Error;
-              log('❌ Error restarting speech recognition:', err.message);
-              
-              // If we get "already started" error, that's fine
-              if (!err.message.includes('already started')) {
-                console.error('Error restarting speech recognition:', err);
-                setLastError(err.message);
-              }
-            }
-          }
-        }, 500);
+      // Auto-restart for continuous listening
+      if (continuous) {
+        scheduleRestart();
       }
     };
 
-    // Handle page visibility changes
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden' && recognition) {
-        log('👁️ Page hidden, stopping recognition');
-        recognition.stop();
-      } else if (document.visibilityState === 'visible' && continuous && !isListening) {
-        log('👁️ Page visible, restarting recognition');
-        setTimeout(() => {
-          if (recognitionRef.current && !isListening) {
-            try {
-              recognitionRef.current.start();
-            } catch (error) {
-              log('❌ Error restarting on visibility change:', (error as Error).message);
-            }
-          }
-        }, 1000);
-      }
-    };
+  }, [isSupported, continuous, language, onResult, onFinalText, log, scheduleRestart]);
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
+  // Setup recognition when component mounts or dependencies change
+  useEffect(() => {
+    setupRecognition();
+    
     return () => {
       log('🧹 Cleaning up speech recognition');
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (recognition) {
-        recognition.stop();
-      }
-      if (restartTimeoutRef.current) {
-        clearTimeout(restartTimeoutRef.current);
-        restartTimeoutRef.current = null;
+      clearRestartTimeout();
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
       }
     };
-  }, [isSupported, continuous, language, onResult, checkForWakeWord, lastError]);
+  }, [setupRecognition, clearRestartTimeout, log]);
 
-  const startListening = useCallback(() => {
-    if (recognitionRef.current && !isListening) {
-      try {
-        log('▶️ Manually starting speech recognition');
-        setLastError(null);
-        recognitionRef.current.start();
-      } catch (error) {
-        const err = error as Error;
-        log('❌ Error starting speech recognition:', err.message);
-        
-        // If already started, that's fine
-        if (!err.message.includes('already started')) {
-          console.error('Error starting speech recognition:', err);
-          setLastError(err.message);
-        }
-      }
+  // Auto-start listening if continuous is enabled
+  useEffect(() => {
+    if (continuous && isSupported && !isListening) {
+      startRecognition();
     }
-  }, [isListening, log]);
+  }, [continuous, isSupported, isListening, startRecognition]);
+
+  // Manual start/stop functions
+  const startListening = useCallback(() => {
+    log('▶️ Manually starting speech recognition');
+    startRecognition();
+  }, [startRecognition, log]);
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      log('⏹️ Manually stopping speech recognition');
-      recognitionRef.current.stop();
-    }
-    if (restartTimeoutRef.current) {
-      clearTimeout(restartTimeoutRef.current);
-      restartTimeoutRef.current = null;
-    }
-  }, [log]);
+    log('⏹️ Manually stopping speech recognition');
+    stopRecognition();
+  }, [stopRecognition, log]);
 
   return {
     isListening,
