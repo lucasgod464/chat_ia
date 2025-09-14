@@ -20,8 +20,8 @@ import type { ChatMessage } from "@shared/schema";
 
 export default function SlappyChat() {
   const [messageInput, setMessageInput] = useState("");
-  const [isListeningEnabled, setIsListeningEnabled] = useState(true);
-  const [isTTSEnabled, setIsTTSEnabled] = useState(true);
+  const [isListeningEnabled, setIsListeningEnabled] = useState(false);
+  const [isTTSEnabled, setIsTTSEnabled] = useState(false);
   const [isVoiceOnlyMode, setIsVoiceOnlyMode] = useState(false);
   const [wakeWord, setWakeWord] = useState("Ok, Slapy");
   const [isTyping, setIsTyping] = useState(false);

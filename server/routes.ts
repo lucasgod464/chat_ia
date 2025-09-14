@@ -138,7 +138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ audioData: `data:audio/mpeg;base64,${audioBase64}` });
     } catch (error) {
       console.error("❌ Error generating speech:", error);
-      res.status(500).json({ error: "Failed to generate speech", details: error.message });
+      res.status(500).json({ error: "Failed to generate speech", details: (error as Error).message });
     }
   });
 
