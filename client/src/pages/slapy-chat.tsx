@@ -13,6 +13,7 @@ import { VoiceInput } from "@/components/voice-input";
 import { ListeningIndicator } from "@/components/listening-indicator";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { useTextToSpeech } from "@/hooks/use-text-to-speech";
+import { AudioVisualizer } from "@/components/audio-visualizer";
 import { sendMessageToSlapy, fetchMessages } from "@/lib/webhook-api";
 import type { ChatMessage } from "@shared/schema";
 
@@ -20,6 +21,7 @@ export default function SlappyChat() {
   const [messageInput, setMessageInput] = useState("");
   const [isListeningEnabled, setIsListeningEnabled] = useState(true);
   const [isTTSEnabled, setIsTTSEnabled] = useState(true);
+  const [isVoiceOnlyMode, setIsVoiceOnlyMode] = useState(false);
   const [wakeWord, setWakeWord] = useState("Ok, Slapy");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -97,9 +99,12 @@ export default function SlappyChat() {
       stopListening();
     } else if (!isTTSPlaying && isListeningEnabled && !isListening) {
       console.log('🎤 TTS finished - resuming voice recognition');
-      startListening();
+      const timeoutId = setTimeout(() => {
+        startListening();
+      }, 500);
+      return () => clearTimeout(timeoutId);
     }
-  }, [isTTSPlaying, isListening, isListeningEnabled, startListening, stopListening]);
+  }, [isTTSPlaying]);
 
   // Voice input toggle handler
   const handleToggleListening = useCallback(() => {
@@ -220,6 +225,22 @@ export default function SlappyChat() {
 
             <Card>
               <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Modo Apenas Voz</span>
+                  <Switch
+                    checked={isVoiceOnlyMode}
+                    onCheckedChange={setIsVoiceOnlyMode}
+                    data-testid="voice-only-toggle"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Esconde o chat e mostra visualização de áudio
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
                 <div className="text-center">
                   <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
                     <svg className="w-4 h-4 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
@@ -274,12 +295,21 @@ export default function SlappyChat() {
           </div>
         </header>
 
-        {/* Chat Messages */}
+        {/* Chat Messages or Audio Visualizer */}
         <div 
           ref={chatContainerRef}
           className="flex-1 overflow-y-auto chat-container"
           data-testid="chat-container"
         >
+          {isVoiceOnlyMode ? (
+            /* Audio Visualizer Mode */
+            <div className="h-full flex items-center justify-center">
+              <AudioVisualizer 
+                isPlaying={isTTSPlaying || isTyping} 
+                className="w-full"
+              />
+            </div>
+          ) : (
           <div className="max-w-4xl mx-auto px-4 py-6 lg:px-6 space-y-6">
             
             {/* Welcome Message */}
@@ -345,6 +375,7 @@ export default function SlappyChat() {
               </div>
             )}
           </div>
+          )}
         </div>
 
         {/* Input Area */}
