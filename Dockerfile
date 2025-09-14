@@ -28,11 +28,14 @@ WORKDIR /usr/src/app
 # Copiar arquivos de dependências
 COPY package*.json ./
 
-# Instalar apenas dependências de produção
-RUN npm ci --only=production && npm cache clean --force
+# Instalar dependências de produção + vite (necessário para servir arquivos estáticos)
+RUN npm ci --only=production && npm install vite && npm cache clean --force
 
 # Copiar aplicação buildada do stage anterior
 COPY --from=builder /usr/src/app/dist ./dist
+
+# Copiar arquivos estáticos buildados do frontend
+COPY --from=builder /usr/src/app/dist/public ./public
 
 # Criar usuário não-root para segurança
 RUN addgroup -g 1001 -S nodejs

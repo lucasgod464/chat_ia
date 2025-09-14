@@ -2,7 +2,7 @@
 node_modules
 npm-debug.log*
 
-# Build output
+# Build output (será recriado no build)
 dist
 .vite
 
