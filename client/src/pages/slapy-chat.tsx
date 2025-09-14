@@ -29,6 +29,8 @@ export default function SlappyChat() {
   
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastTTSEndTimeRef = useRef<number>(0);
+  const lastAIResponseRef = useRef<string>('');
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { speak, isPlaying: isTTSPlaying } = useTextToSpeech();
@@ -49,6 +51,11 @@ export default function SlappyChat() {
     onSuccess: (data) => {
       setIsTyping(false);
       queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
+      
+      // Store last AI response for duplicate detection
+      if (data.response) {
+        lastAIResponseRef.current = data.response;
+      }
       
       // Convert Slapy's response to speech if TTS is enabled
       if (isTTSEnabled && data.response) {
@@ -71,10 +78,37 @@ export default function SlappyChat() {
     },
   });
 
+  // Normalize text for comparison
+  const normalizeText = useCallback((text: string) => {
+    return text.toLowerCase()
+      .replace(/[^\w\s]/g, '') // Remove punctuation
+      .replace(/\s+/g, ' ') // Normalize spaces
+      .trim();
+  }, []);
+
+  // Check if voice command is similar to last AI response (prevent echo)
+  const isSimilarToLastResponse = useCallback((transcript: string) => {
+    if (!lastAIResponseRef.current) return false;
+    
+    const normalizedTranscript = normalizeText(transcript);
+    const normalizedLastResponse = normalizeText(lastAIResponseRef.current);
+    
+    // Check if transcript starts with or is contained in the last response
+    return normalizedLastResponse.includes(normalizedTranscript) || 
+           normalizedTranscript.includes(normalizedLastResponse) ||
+           (normalizedTranscript.length > 10 && normalizedLastResponse.startsWith(normalizedTranscript.substring(0, 20)));
+  }, [normalizeText]);
+
   // Voice command handler (defined before speech recognition hook)
   const handleVoiceCommand = useCallback((command: string) => {
     console.log('🎤 Voice command received:', command);
     if (command.trim()) {
+      // Filter out potential echoes of AI responses
+      if (isSimilarToLastResponse(command)) {
+        console.log('🚫 Ignoring voice command - too similar to last AI response');
+        return;
+      }
+      
       console.log('📤 Sending voice command to Slapy:', command);
       sendMessageMutation.mutate({ 
         message: command, 
@@ -83,7 +117,23 @@ export default function SlappyChat() {
     } else {
       console.log('⚠️ Empty command received, ignoring');
     }
-  }, [sendMessageMutation]);
+  }, [sendMessageMutation, isSimilarToLastResponse]);
+
+  // Track when TTS ends for cooldown
+  const [suspended, setSuspended] = useState(false);
+  
+  useEffect(() => {
+    if (isTTSPlaying) {
+      setSuspended(true);
+      lastTTSEndTimeRef.current = Date.now();
+    } else {
+      // Add cooldown after TTS ends
+      const cooldownTimer = setTimeout(() => {
+        setSuspended(false);
+      }, 1200);
+      return () => clearTimeout(cooldownTimer);
+    }
+  }, [isTTSPlaying]);
 
   // Speech recognition without wake word - auto-send when speech ends
   const { isListening, isSupported, lastError, startListening, stopListening, transcript } = useSpeechRecognition({
@@ -91,21 +141,18 @@ export default function SlappyChat() {
     language: 'pt-BR',
     onFinalText: handleVoiceCommand,
     debug: false,
+    suspended,
+    minConfidence: 0.6,
   });
 
-  // Automatically stop/start voice recognition when TTS is playing/stopped
+  // Log suspended state for debugging
   useEffect(() => {
-    if (isTTSPlaying && isListening) {
-      console.log('🔇 TTS started - pausing voice recognition to prevent loop');
-      stopListening();
-    } else if (!isTTSPlaying && isListeningEnabled && !isListening) {
-      console.log('🎤 TTS finished - resuming voice recognition');
-      const timeoutId = setTimeout(() => {
-        startListening();
-      }, 500);
-      return () => clearTimeout(timeoutId);
+    if (suspended) {
+      console.log('🔇 Speech recognition suspended to prevent feedback loop');
+    } else {
+      console.log('🎤 Speech recognition available to resume');
     }
-  }, [isTTSPlaying, isListening, isListeningEnabled, stopListening, startListening]);
+  }, [suspended]);
 
   // Voice input toggle handler
   const handleToggleListening = useCallback(() => {

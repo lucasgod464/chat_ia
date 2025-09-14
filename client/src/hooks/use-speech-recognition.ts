@@ -12,6 +12,8 @@ interface UseSpeechRecognitionProps {
   onResult?: (result: SpeechRecognitionResult) => void;
   onFinalText?: (transcript: string) => void;
   debug?: boolean;
+  suspended?: boolean;
+  minConfidence?: number;
 }
 
 interface SpeechRecognitionHook {
@@ -30,6 +32,8 @@ export function useSpeechRecognition({
   onResult,
   onFinalText,
   debug = false,
+  suspended = false,
+  minConfidence = 0.6,
 }: UseSpeechRecognitionProps = {}): SpeechRecognitionHook {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -82,15 +86,15 @@ export function useSpeechRecognition({
 
   // Auto-restart recognition for continuous listening
   const scheduleRestart = useCallback(() => {
-    if (continuous && !restartTimeoutRef.current) {
+    if (continuous && !suspended && !restartTimeoutRef.current) {
       log('🔄 Scheduling restart in 1000ms...');
       restartTimeoutRef.current = setTimeout(() => {
-        if (!isListening) {
+        if (!isListening && !suspended) {
           startRecognition();
         }
       }, 1000);
     }
-  }, [continuous, isListening, startRecognition, log]);
+  }, [continuous, suspended, isListening, startRecognition, log]);
 
   const setupRecognition = useCallback(() => {
     if (!isSupported) return;
@@ -124,18 +128,27 @@ export function useSpeechRecognition({
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       log('📝 Speech recognition result received');
       
+      // Skip processing if suspended to prevent feedback loop
+      if (suspended) {
+        log('⏸️ Skipping result processing - recognition is suspended');
+        return;
+      }
+      
       let interimTranscript = '';
       let finalTranscript = '';
+      let bestConfidence = 0;
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
         const transcriptPart = result[0].transcript;
+        const confidence = result[0].confidence;
         
         if (result.isFinal) {
           finalTranscript += transcriptPart;
           finalTranscriptRef.current += transcriptPart;
-          setConfidence(result[0].confidence);
-          log('✅ Final transcript part:', transcriptPart);
+          bestConfidence = Math.max(bestConfidence, confidence);
+          setConfidence(confidence);
+          log('✅ Final transcript part:', { transcriptPart, confidence });
         } else {
           interimTranscript += transcriptPart;
         }
@@ -152,14 +165,21 @@ export function useSpeechRecognition({
         });
       }
 
-      // Send final transcript automatically when speech ends
-      if (finalTranscript.trim() && onFinalText) {
+      // Send final transcript only if not suspended, has good confidence, and is long enough
+      if (finalTranscript.trim() && onFinalText && !suspended) {
         const trimmedText = finalTranscriptRef.current.trim();
-        if (trimmedText) {
-          log('📤 Auto-sending final text:', trimmedText);
+        if (trimmedText && trimmedText.length > 3 && bestConfidence >= minConfidence) {
+          log('📤 Auto-sending final text:', { trimmedText, confidence: bestConfidence });
           onFinalText(trimmedText);
           finalTranscriptRef.current = '';
           setTranscript('');
+        } else {
+          log('⚠️ Skipping auto-send - low confidence or too short:', {
+            text: trimmedText,
+            confidence: bestConfidence,
+            minConfidence,
+            length: trimmedText.length
+          });
         }
       }
     };
@@ -182,18 +202,20 @@ export function useSpeechRecognition({
       log('🛑 Speech recognition ended');
       setIsListening(false);
       
-      // Send any remaining final transcript
-      if (finalTranscriptRef.current.trim() && onFinalText) {
+      // Send any remaining final transcript only if not suspended
+      if (finalTranscriptRef.current.trim() && onFinalText && !suspended) {
         const trimmedText = finalTranscriptRef.current.trim();
-        log('📤 Sending remaining text on end:', trimmedText);
-        onFinalText(trimmedText);
+        if (trimmedText.length > 3) {
+          log('📤 Sending remaining text on end:', trimmedText);
+          onFinalText(trimmedText);
+        }
         finalTranscriptRef.current = '';
       }
       
       setTranscript('');
       
-      // Auto-restart for continuous listening
-      if (continuous) {
+      // Auto-restart for continuous listening only if not suspended
+      if (continuous && !suspended) {
         scheduleRestart();
       }
     };
@@ -213,20 +235,27 @@ export function useSpeechRecognition({
     };
   }, [setupRecognition, clearRestartTimeout, log]);
 
-  // Auto-start listening if continuous is enabled
+  // Auto-start listening if continuous is enabled and not suspended
   useEffect(() => {
-    if (continuous && isSupported && !isListening) {
+    if (continuous && isSupported && !isListening && !suspended) {
       startRecognition();
     }
-  }, [continuous, isSupported, isListening, startRecognition]);
+  }, [continuous, isSupported, isListening, suspended, startRecognition]);
 
-  // Stop listening when continuous is disabled
+  // Stop listening when continuous is disabled or suspended
   useEffect(() => {
-    if (!continuous && isListening) {
-      log('🔇 Continuous listening disabled - stopping recognition');
+    if ((!continuous || suspended) && isListening) {
+      log('🔇 Continuous listening disabled or suspended - stopping recognition');
       stopRecognition();
     }
-  }, [continuous, isListening, stopRecognition, log]);
+  }, [continuous, suspended, isListening, stopRecognition, log]);
+
+  // Clear restart timeout when suspended
+  useEffect(() => {
+    if (suspended) {
+      clearRestartTimeout();
+    }
+  }, [suspended, clearRestartTimeout]);
 
   // Manual start/stop functions
   const startListening = useCallback(() => {
