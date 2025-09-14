@@ -13,7 +13,7 @@ RUN npm ci
 COPY . .
 
 # Build da aplicação (frontend + backend separado para produção)
-RUN vite build && npx esbuild server/production.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/server.js
+RUN chmod +x build.sh && ./build.sh
 
 # Stage de produção
 FROM node:20.9.0-alpine AS production
