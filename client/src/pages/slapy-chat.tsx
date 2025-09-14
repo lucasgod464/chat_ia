@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ChatMessageComponent } from "@/components/chat-message";
 import { VoiceInput } from "@/components/voice-input";
@@ -25,6 +26,7 @@ export default function SlappyChat() {
   const [wakeWord, setWakeWord] = useState("Ok, Slapy");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -265,9 +267,77 @@ export default function SlappyChat() {
                 isListening={isListening && isListeningEnabled} 
                 data-testid="listening-indicator"
               />
-              <Button variant="ghost" size="icon" data-testid="settings-button">
-                <Settings className="h-5 w-5" />
-              </Button>
+              <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon" data-testid="settings-button">
+                    <Settings className="h-5 w-5" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Configurações</DialogTitle>
+                  </DialogHeader>
+                  
+                  <div className="space-y-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Escuta Contínua</span>
+                          <Switch
+                            checked={isListeningEnabled}
+                            onCheckedChange={setIsListeningEnabled}
+                            data-testid="continuous-listening-toggle"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Síntese de Voz</span>
+                          <Switch
+                            checked={isTTSEnabled}
+                            onCheckedChange={setIsTTSEnabled}
+                            data-testid="tts-toggle"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Modo Apenas Voz</span>
+                          <Switch
+                            checked={isVoiceOnlyMode}
+                            onCheckedChange={setIsVoiceOnlyMode}
+                            data-testid="voice-only-toggle"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Esconde o chat e mostra visualização de áudio
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
+                            <svg className="w-4 h-4 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M7 4a3 3 0 616 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 715 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <p className="text-sm text-center text-muted-foreground">
+                            Fale normalmente quando a escuta estiver ativa. O sistema enviará automaticamente sua mensagem quando você parar de falar.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </header>
