@@ -12,8 +12,8 @@ RUN npm ci
 # Copiar código fonte
 COPY . .
 
-# Build da aplicação (frontend + backend)
-RUN npm run build
+# Build da aplicação (frontend + backend separado para produção)
+RUN vite build && npx esbuild server/production.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/server.js
 
 # Stage de produção
 FROM node:20.9.0-alpine AS production
@@ -50,4 +50,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD node -e "const http = require('http'); const options = { host: 'localhost', port: 5000, timeout: 2000 }; const request = http.request(options, (res) => { console.log('Health check passed'); process.exit(0); }); request.on('error', (err) => { console.log('Health check failed'); process.exit(1); }); request.end();"
 
 # Comando para iniciar a aplicação
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/server.js"]
