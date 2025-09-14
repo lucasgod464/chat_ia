@@ -220,6 +220,14 @@ export function useSpeechRecognition({
     }
   }, [continuous, isSupported, isListening, startRecognition]);
 
+  // Stop listening when continuous is disabled
+  useEffect(() => {
+    if (!continuous && isListening) {
+      log('🔇 Continuous listening disabled - stopping recognition');
+      stopRecognition();
+    }
+  }, [continuous, isListening, stopRecognition, log]);
+
   // Manual start/stop functions
   const startListening = useCallback(() => {
     log('▶️ Manually starting speech recognition');

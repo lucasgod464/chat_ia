@@ -104,7 +104,7 @@ export default function SlappyChat() {
       }, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [isTTSPlaying]);
+  }, [isTTSPlaying, isListening, isListeningEnabled, stopListening, startListening]);
 
   // Voice input toggle handler
   const handleToggleListening = useCallback(() => {
