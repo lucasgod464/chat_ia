@@ -53,14 +53,14 @@ export function AudioVisualizer({ isPlaying, className }: AudioVisualizerProps) 
         <div 
           className={cn(
             "absolute w-48 h-48 border transition-all duration-500 ease-in-out",
-            isPlaying ? "border-pink-400 shadow-lg" : "border-pink-400/60"
+            isPlaying ? "border-blue-400 shadow-lg" : "border-blue-400/60"
           )}
           style={{
             transform: `rotateX(45deg) rotateZ(8deg) ${isPlaying ? 'scale(1.1)' : 'scale(1)'}`,
             boxShadow: isPlaying 
-              ? '0 0 30px rgba(244, 114, 182, 0.6), inset 0 0 12px rgba(244, 114, 182, 0.2)' 
-              : '0 0 12px rgba(244, 114, 182, 0.3), inset 0 0 6px rgba(244, 114, 182, 0.1)',
-            background: 'linear-gradient(225deg, rgba(244, 114, 182, 0.05), rgba(34, 211, 238, 0.05))',
+              ? '0 0 30px rgba(59, 130, 246, 0.6), inset 0 0 12px rgba(59, 130, 246, 0.2)' 
+              : '0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 6px rgba(59, 130, 246, 0.1)',
+            background: 'linear-gradient(225deg, rgba(59, 130, 246, 0.05), rgba(34, 211, 238, 0.05))',
             transformOrigin: 'center center'
           }}
         />
