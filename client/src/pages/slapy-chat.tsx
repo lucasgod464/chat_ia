@@ -169,29 +169,6 @@ export default function SlappyChat() {
             </div>
           </div>
 
-          {/* Status Card */}
-          <Card className="mb-6">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium">Status do Sistema</span>
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              </div>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex justify-between">
-                  <span>Webhook:</span>
-                  <span className="text-green-400">Conectado</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>ElevenLabs:</span>
-                  <span className="text-green-400">Ativo</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Reconhecimento:</span>
-                  <span className="text-green-400">Pronto</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Settings */}
           <div className="space-y-4">
