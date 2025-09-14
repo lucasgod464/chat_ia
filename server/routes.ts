@@ -88,11 +88,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Text is required" });
       }
 
-      const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_LABS_API_KEY;
+      const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
       
       if (!elevenLabsApiKey) {
-        throw new Error("ElevenLabs API key not configured");
+        console.error("ElevenLabs API key not found in environment");
+        return res.status(500).json({ error: "ElevenLabs API key not configured" });
       }
+
+      console.log("🎵 Generating speech for text:", text.substring(0, 50) + "...");
+      console.log("🔑 API key available:", elevenLabsApiKey ? "Yes" : "No");
 
       const elevenLabsResponse = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM', {
         method: 'POST',
@@ -111,17 +115,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }),
       });
 
+      console.log("📡 ElevenLabs response status:", elevenLabsResponse.status);
+
       if (!elevenLabsResponse.ok) {
-        throw new Error(`ElevenLabs API error: ${elevenLabsResponse.statusText}`);
+        const errorBody = await elevenLabsResponse.text();
+        console.error("❌ ElevenLabs API error:", elevenLabsResponse.status, errorBody);
+        return res.status(500).json({ 
+          error: `ElevenLabs API error: ${elevenLabsResponse.status} ${elevenLabsResponse.statusText}`,
+          details: errorBody
+        });
       }
 
       const audioBuffer = await elevenLabsResponse.arrayBuffer();
       const audioBase64 = Buffer.from(audioBuffer).toString('base64');
 
+      console.log("✅ Speech generated successfully, audio size:", audioBuffer.byteLength, "bytes");
       res.json({ audioData: `data:audio/mpeg;base64,${audioBase64}` });
     } catch (error) {
-      console.error("Error generating speech:", error);
-      res.status(500).json({ error: "Failed to generate speech" });
+      console.error("❌ Error generating speech:", error);
+      res.status(500).json({ error: "Failed to generate speech", details: error.message });
     }
   });
 
