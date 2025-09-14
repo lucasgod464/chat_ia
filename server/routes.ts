@@ -7,6 +7,7 @@ import { z } from "zod";
 const webhookRequestSchema = z.object({
   message: z.string().min(1),
   inputType: z.enum(['text', 'voice']).default('text'),
+  voiceOnlyMode: z.boolean().default(false),
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -35,7 +36,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Webhook integration with n8n
   app.post("/api/webhook/slapy", async (req, res) => {
     try {
-      const { message, inputType } = webhookRequestSchema.parse(req.body);
+      const { message, inputType, voiceOnlyMode } = webhookRequestSchema.parse(req.body);
       
       // Save user message
       const userMessage = await storage.createMessage({
@@ -51,7 +52,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ 
+          message, 
+          inputType,
+          voiceOnlyMode 
+        }),
       });
 
       if (!webhookResponse.ok) {

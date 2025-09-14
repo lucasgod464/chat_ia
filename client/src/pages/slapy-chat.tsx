@@ -43,8 +43,8 @@ export default function SlappyChat() {
 
   // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: ({ message, inputType }: { message: string; inputType: 'text' | 'voice' }) =>
-      sendMessageToSlapy(message, inputType),
+    mutationFn: ({ message, inputType, voiceOnlyMode }: { message: string; inputType: 'text' | 'voice'; voiceOnlyMode?: boolean }) =>
+      sendMessageToSlapy(message, inputType, voiceOnlyMode || false),
     onMutate: () => {
       setIsTyping(true);
     },
@@ -112,7 +112,8 @@ export default function SlappyChat() {
       console.log('📤 Sending voice command to Slapy:', command);
       sendMessageMutation.mutate({ 
         message: command, 
-        inputType: 'voice' 
+        inputType: 'voice',
+        voiceOnlyMode: isVoiceOnlyMode 
       });
     } else {
       console.log('⚠️ Empty command received, ignoring');
@@ -170,7 +171,8 @@ export default function SlappyChat() {
     if (message) {
       sendMessageMutation.mutate({ 
         message, 
-        inputType: 'text' 
+        inputType: 'text',
+        voiceOnlyMode: isVoiceOnlyMode 
       });
       setMessageInput("");
       if (textareaRef.current) {

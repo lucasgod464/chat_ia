@@ -20,11 +20,13 @@ export interface WebhookResponse {
 
 export async function sendMessageToSlapy(
   message: string,
-  inputType: 'text' | 'voice' = 'text'
+  inputType: 'text' | 'voice' = 'text',
+  voiceOnlyMode: boolean = false
 ): Promise<WebhookResponse> {
   const response = await apiRequest('POST', '/api/webhook/slapy', {
     message,
     inputType,
+    voiceOnlyMode,
   });
   
   return response.json();
