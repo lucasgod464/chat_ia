@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, Settings, Bot } from "lucide-react";
+import logoImage from "@assets/logo-neg_1759114124831.png";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -217,8 +218,8 @@ export default function SlappyChat() {
         <div className="flex-1 overflow-y-auto p-6">
           {/* Logo/Header */}
           <div className="flex items-center space-x-3 mb-8">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
-              <Bot className="text-primary-foreground text-lg" />
+            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden">
+              <img src={logoImage} alt="Slapy Logo" className="w-9 h-9 object-contain" />
             </div>
             <div>
               <h1 className="text-xl font-bold gradient-text">Slapy</h1>
@@ -298,8 +299,8 @@ export default function SlappyChat() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
-                  <Bot className="text-primary-foreground text-sm" />
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden">
+                  <img src={logoImage} alt="Slapy Logo" className="w-7 h-7 object-contain" />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold">Slapy</h2>
@@ -412,8 +413,8 @@ export default function SlappyChat() {
             {messages.length === 0 && !isLoading && (
               <div className="flex justify-center">
                 <div className="text-center max-w-md">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
-                    <Bot className="text-primary-foreground text-2xl" />
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white flex items-center justify-center overflow-hidden">
+                    <img src={logoImage} alt="Slapy Logo" className="w-14 h-14 object-contain" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2 gradient-text">Olá! Eu sou o Slapy</h3>
                   <p className="text-muted-foreground text-sm">
