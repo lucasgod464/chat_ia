@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, Settings, Bot } from "lucide-react";
-import logoImage from "@assets/logo-neg_1759114124831.png";
+import logoIcon from "@assets/generated_images/Hexagonal_tech_logo_icon_8f0466f6.png";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
